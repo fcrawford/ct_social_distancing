@@ -60,7 +60,7 @@ ui <- bootstrapPage(
   absolutePanel(
     top = 3, left = 60, 
     style = "z-index:500; text-align: left;",
-    tags$h2("Connecticut Social Contact Explorer"),
+    tags$h2("Connecticut Social Contact Explorer")
   ),
   absolutePanel(id = "controls", class = "panel panel-default",
                top = 75, left = 60, width = 250, fixed=TRUE,
@@ -75,7 +75,7 @@ ui <- bootstrapPage(
                  value = daymin,
                  timeFormat = "%d %b", 
                  animate=animationOptions(interval = 1000, loop = FALSE))),
-  plotOutput("contact_curve", height="300px", width="100%") #,
+  plotOutput("contact_curve", height="300px", width="100%"),
   #plotOutput("contact_curve_areas", height="300px", width="100%"),
   p("Developed by Forrest W. Crawford and Whitespace Solutions Inc.")
   ) # div class=outer
