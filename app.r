@@ -21,8 +21,8 @@ sundays = seq(mdy("2/2/2020"), today(), by="week")
 
 #######################
 
-daymin = mdy("8/10/2020")
-daymax = mdy("8/24/2020")
+daymin = min(dat_merged_towns$date)
+daymax = max(dat_merged_towns$date)
 
 
 ###################################
@@ -65,14 +65,14 @@ ui <- bootstrapPage(
   absolutePanel(id = "controls", class = "panel panel-default",
                top = 75, left = 60, width = 250, fixed=TRUE,
                draggable = TRUE, height = "auto",
-               h4("Controls"),
+               #h4("Controls"),
                radioButtons("area_level", "Spatial resolution", c("Town" = "town", "Census block group" = "cbg")),
                radioButtons("metric_type", "Metric", c("Contact locations" = "contact", "Home locations" = "home")),
                sliderInput("plot_date",
                  label = h5("Select Date"),
                  min = daymin,
                  max = daymax,
-                 value = daymin,
+                 value = daymax,
                  timeFormat = "%d %b", 
                  animate=animationOptions(interval = 1000, loop = FALSE))),
   plotOutput("contact_curve", height="300px", width="100%"),
@@ -138,7 +138,7 @@ server = function(input, output, session) {
 
   output$contact_curve <- renderPlot({
     contact_max = max(dat_by_state$prob_sum)
-    plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=2, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
+    plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
          ylim=c(0,max(dat_by_state$prob_sum)), xlab="", ylab="Number of contacts detected statewide", axes=FALSE, main=)
     axis(1,at=dat_by_state$date, lab=format(dat_by_state$date, "%b %d"))
     axis(2)
