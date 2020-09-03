@@ -1,0 +1,323 @@
+---
+author: "By Forrest W. Crawford and Whitespace Solutions"
+output: html_document
+params:
+  town: "New Haven"
+---
+
+```{r echo=FALSE, messages=FALSE}
+library(leaflet) 
+library(tigris)
+library(lubridate)
+library(stringr)
+library(htmltools)
+library(htmlwidgets)
+library(sf)
+
+load("ct_data.Rsave")
+
+town = params$town
+
+alltowns = unique(ct_towns$NAME)
+if(!(town %in% alltowns)) {stop(paste("Town", town, "not found."))}
+
+ct_towns = ct_towns %>% sf::st_transform(4326)
+ct_cbgs = ct_cbgs %>% sf::st_transform(4326)
+
+# should be prior week using today() 
+startdate = mdy("8/20/2020")
+enddate = mdy("8/26/2020")
+
+
+
+
+
+
+town_boundary = ct_towns[ct_towns$NAME==town,]
+suppressWarnings(suppressMessages(town_boundary_buf <- st_buffer(town_boundary, dist=0.005)))
+suppressMessages(cbgs_in_town <- st_within(ct_cbgs, town_boundary_buf) %>% lengths > 0 )
+town_cbgs = ct_cbgs[cbgs_in_town,]
+
+
+
+
+
+dat_town = dat_by_town[dat_by_town$town == town,]
+
+lastdate = max(dat_by_town$date)
+oneweekago =  lastdate - days(6)
+# these are the same length
+lastweek = interval(lastdate - days(6), lastdate)
+lastweek2 = interval(lastdate - days(13), lastdate - days(7))
+
+
+dat_town_lastweek  = dat_town[dat_town$date %within% lastweek,]
+dat_town_lastweek2 = dat_town[dat_town$date %within% lastweek2,]
+
+
+
+
+
+dat_cbg = dat_by_cbg[dat_by_cbg$geoid %in% town_cbgs$GEOID,]
+
+dat_cbg_lastweek  = dat_cbg[dat_cbg$date %within% lastweek,]
+dat_cbg_lastweek2 = dat_cbg[dat_cbg$date %within% lastweek2,]
+
+
+#dat_cbg_lastweek  = dat_cbg[dat_cbg$date >= startdate & dat_cbg$date <= enddate,]
+
+town_lastweek_mean = aggregate(prob_sum_contact ~ town, data=dat_town_lastweek, mean)
+town_lastweek2_mean = aggregate(prob_sum_contact ~ town, data=dat_town_lastweek2, mean)
+
+cbg_lastweek_means = aggregate(prob_sum_contact ~ geoid, data=dat_cbg_lastweek, mean)
+cbg_lastweek2_means = aggregate(prob_sum_contact ~ geoid, data=dat_cbg_lastweek2, mean)
+
+cbg_lastweek_means_home = aggregate(prob_sum_home ~ geoid, data=dat_cbg_lastweek, mean)
+
+cbg_historical = merge(cbg_lastweek_means, cbg_lastweek2_means, by="geoid", suffixes=c("_lastweek", "_lastweek2"))
+
+cbg_historical = merge(cbg_historical, cbg_lastweek_means_home, by="geoid")
+
+cbg_historical$change = cbg_historical$prob_sum_contact_lastweek - cbg_historical$prob_sum_contact_lastweek2
+cbg_historical$pchange = cbg_historical$change / cbg_historical$prob_sum_contact_lastweek2
+cbg_historical$townrank1 = length(cbg_historical$change) + 1 - rank(cbg_historical$prob_sum_contact_lastweek)
+cbg_historical$townrank2 = length(cbg_historical$change) + 1 - rank(cbg_historical$prob_sum_contact_lastweek2)
+
+ord = order(cbg_historical$townrank1, decreasing=FALSE)
+
+cbg_historical = cbg_historical[ord,]
+
+
+dat_merged_cbgs_historical = geo_join(town_cbgs, cbg_historical, by_sp="GEOID", by_df="geoid", how="left") %>% 
+                    sf::st_transform(4326)
+
+
+
+##################33
+
+# compute view bounds
+bdry = as.numeric(st_bbox(town_boundary))
+```
+
+---
+title: `r town`, Connecticut | Social Contact Report (beta)
+subtitle: `r format(startdate, "%B %d")` -- `r format(enddate, "%B %d, %Y")`  
+---
+
+The maps below show contact rates (left, in <font color=\"#00AA00\"><b>green</b></font>) and home residences of individuals having contact (right, in <font color=\"#0000AA\"><b>blue</b></font>) for block groups in `r town`.  These are areas where communications, policies, or guidelines to improve social distancing may be helpful. 
+
+<div class = "row">
+<div class = "col-md-6">
+#### Areas where contact is happening
+
+These are areas where communications, policies, or guidelines to improve social distancing may be helpful. 
+
+```{r echo=FALSE, out.width='100%'}
+
+
+pal_cbg_contact <- colorNumeric("Greens", domain=dat_merged_cbgs_historical$prob_sum_contact_lastweek) 
+
+
+pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red"), 
+                                     levels = c("Hospital", "House of Worship", "Sports Venue", "Mall"))
+
+pointrad = 5
+
+basemap = leaflet() %>% 
+          addLayersControl(
+            position = "topright",
+            baseGroups = c("CartoDB.Positron", "Esri.WorldStreetMap", "CartoDB.Voyager", "Esri.WorldImagery"),
+            overlayGroups = c("Metric", "Points of Interest"),
+            options = layersControlOptions(collapsed = TRUE)) %>% 
+          hideGroup(c("Points of Interest")) %>%
+          addProviderTiles("CartoDB.Positron", group="CartoDB.Positron") %>% 
+          addProviderTiles("Esri.WorldImagery", group="Esri.WorldImagery") %>%
+          addProviderTiles("Esri.WorldStreetMap", group="Esri.WorldStreetMap") %>%
+          addProviderTiles("CartoDB.Voyager", group="CartoDB.Voyager") %>%
+          addPolygons(data=town_boundary, fill=NULL, stroke=TRUE, weight=8, fillOpacity=0, color="black") 
+
+map = basemap %>% addPolygons(data=dat_merged_cbgs_historical, 
+                      stroke = FALSE, smoothFactor = 0.1, fillOpacity = 0.8, 
+                      fillColor = ~pal_cbg_contact(dat_merged_cbgs_historical$prob_sum_contact_lastweek), 
+                      group = "Metric",
+                      label = sprintf("<strong>%s</strong><br/>%g", dat_merged_cbgs_historical$GEOID, dat_merged_cbgs_historical$prob_sum_contact_lastweek) %>% lapply(htmltools::HTML),
+                              labelOptions = labelOptions(
+                                style = list("font-weight" = "normal", padding = "3px 8px", "color" = "green"),
+                                textsize = "15px", direction = "auto"))  %>%
+             fitBounds(bdry[1], bdry[2], bdry[3], bdry[4]) %>%
+              addCircleMarkers(data=points_of_interest, lat = ~ lat, lng = ~ lon, 
+                 weight = 1, stroke=FALSE, radius = pointrad, fillOpacity = 0.3, 
+                 group = "Points of Interest",
+                 color = ~pal_points_of_interest(type),
+                 label = sprintf("<strong>%s: %s</strong><br/>%s %s", points_of_interest$type, points_of_interest$name, points_of_interest$address, points_of_interest$city) %>% lapply(htmltools::HTML),
+                 labelOptions = labelOptions(
+                   style = list("font-weight" = "normal", padding = "3px 8px"),
+                   textsize = "15px", direction = "auto")) %>% 
+              addLegend("bottomright", pal = pal_cbg_contact, values = dat_merged_cbgs_historical$prob_sum_contact_lastweek, title = "Contact") 
+
+map
+```
+</div>
+
+<div class = "col-md-6">
+#### Areas where contacting individuals reside
+
+These are areas where allocating healthcare, testing, and contact tracing resources may be helpful. 
+
+```{r echo=FALSE, out.width='100%'}
+
+pal_cbg_home = colorNumeric("Blues", domain=dat_merged_cbgs_historical$prob_sum_home) 
+
+map2 = basemap %>% addPolygons(data=dat_merged_cbgs_historical, 
+                      stroke = FALSE, smoothFactor = 0.1, fillOpacity = 0.8, 
+                      fillColor = ~pal_cbg_home(dat_merged_cbgs_historical$prob_sum_home), 
+                      group = "Metric",
+                      label = sprintf("<strong>%s</strong><br/>%g", dat_merged_cbgs_historical$GEOID, dat_merged_cbgs_historical$prob_sum_home) %>% lapply(htmltools::HTML),
+                              labelOptions = labelOptions(
+                                style = list("font-weight" = "normal", padding = "3px 8px", "color" = "blue"),
+                                textsize = "15px", direction = "auto"))  %>%
+               fitBounds(bdry[1], bdry[2], bdry[3], bdry[4]) %>%
+                             addCircleMarkers(data=points_of_interest, lat = ~ lat, lng = ~ lon, 
+                 weight = 1, stroke=FALSE, radius = pointrad, fillOpacity = 0.3, 
+                 group = "Points of Interest",
+                 color = ~pal_points_of_interest(type),
+                 label = sprintf("<strong>%s: %s</strong><br/>%s %s", points_of_interest$type, points_of_interest$name, points_of_interest$address, points_of_interest$city) %>% lapply(htmltools::HTML),
+                 labelOptions = labelOptions(
+                   style = list("font-weight" = "normal", padding = "3px 8px"),
+                   textsize = "15px", direction = "auto")) %>% 
+   addLegend("bottomright", pal = pal_cbg_home, values = dat_merged_cbgs_historical$prob_sum_home, title = "Home") 
+
+map2
+```
+</div>
+</div>
+
+
+
+
+
+```{r, echo=FALSE, out.width='100%', fig.width=12, fig.height=4}
+
+saturdays = seq(mdy("2/1/2020"), today(), by="week")
+sundays = seq(mdy("2/2/2020"), today(), by="week")
+
+par(mar=c(4,4,1,1), bty="n")
+contact_max = max(dat_town$prob_sum_contact)
+    plot(dat_town$date, dat_town$prob_sum_contact, type="l", col="green", lwd=3, xlim=c(min(dat_town$date)-1, max(dat_town$date)+14),
+         ylim=c(0,max(dat_town$prob_sum_contact)), xlab="", ylab="Number of contacts in town", axes=FALSE, main=)
+    axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
+    axis(2)
+   text(dat_town$date[length(dat_town$date)], dat_town$prob_sum_contact[length(dat_town$prob_sum_contact)], town, pos=4, col="green")
+
+    cbg_geoids = unique(dat_cbg$geoid)
+    for(i in 1:length(cbg_geoids)) {
+      dat_cbg_i = dat_cbg[dat_cbg$geoid == cbg_geoids[i],]
+      lines(dat_cbg_i$date, dat_cbg_i$prob_sum_contact)
+      text(dat_cbg_i$date[length(dat_cbg_i$date)], dat_cbg_i$prob_sum_contact[length(dat_cbg_i$prob_sum_contact)], cbg_geoids[i], pos=4)
+
+    }
+
+    
+
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.2), border=NA) }
+
+    #abline(v=input$plot_date)
+    #text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
+    #points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
+    #text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
+```
+
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "green">
+
+### Executive Summary 
+
+Overall contact in `r town` is ...
+
+Contact `r town` is ranked number X in Connecticut this week, of XXX towns.  That means that XX towns in Connecticut had more contact than `r town`.  
+
+- This is my first conclusion
+- This is my second conclusion
+
+Statewide maps are available in the [interactive web application](https://forrestcrawford.shinyapps.io/ct_social_distancing/).
+
+</div>
+
+
+### Top contact areas in `r town` 
+
+```{r echo=FALSE}
+library(formattable)
+library(DT)
+
+# see here: https://www.displayr.com/formattable/
+
+rownames(dat_merged_cbgs_historical) <- NULL
+options(scipen=999) # don't use sci notation for numbers
+#cbg_historical$change = signif(cbg_historical$change, digits=2)
+
+
+#dat_merged_cbgs_historical$poi = str_replace_all(dat_merged_cbgs_historical$poi, "^\\| ", "")
+#dat_merged_cbgs_historical$poi = str_replace_all(dat_merged_cbgs_historical$poi, "\\|", "/")
+
+
+dat_merged_cbgs_historical$`Geo ID` = dat_merged_cbgs_historical$GEOID
+dat_merged_cbgs_historical$`Points of interest` = dat_merged_cbgs_historical$poi
+dat_merged_cbgs_historical$`Contact this week` = dat_merged_cbgs_historical$prob_sum_contact_lastweek
+dat_merged_cbgs_historical$`% change` = percent(dat_merged_cbgs_historical$pchange)
+dat_merged_cbgs_historical$`Town rank` = dat_merged_cbgs_historical$townrank1
+
+ord = order(dat_merged_cbgs_historical$townrank1)
+dat_merged_cbgs_historical = dat_merged_cbgs_historical[ord,]
+
+
+as.datatable(
+  formattable(dat_merged_cbgs_historical, list(
+                         #`Geo ID` = formatter("span", style = ~ style(color = "black",font.weight = "bold")),
+                         #`Points of Interest` = formatter("span", style = ~ style(color = "black",font.weight = "bold")),
+                         `% change` = formatter("span", style = x ~ style(color = ifelse(x < 0, "green", ifelse(x > 0, "red", "black")))),
+                         `Town rank` = formatter("span", 
+                                       style = ~ style(color = ifelse(`townrank2` < `townrank1`, "green", ifelse(`townrank2`>`townrank1`,"red",""))),
+                                               ~ icontext(ifelse(`townrank2` < `townrank1`, "arrow-up", ifelse(`townrank2`>`townrank1`,"arrow-down","")), `townrank1`)),
+                         area_name=FALSE,
+                         poi=FALSE,
+                         rank=FALSE,
+                         geometry=FALSE,
+                         geoid=FALSE,
+                         STATEFP=FALSE,
+                         COUNTYFP=FALSE,
+                         TRACTCE=FALSE,
+                         BLKGRPCE=FALSE,
+                         AFFGEOID=FALSE,
+                         GEOID=FALSE,
+                         NAME=FALSE,
+                         LSAD=FALSE,
+                         ALAND=FALSE,
+                         AWATER=FALSE,
+                         change=FALSE,
+                         prob_sum_home=FALSE,
+                         prob_sum_contact_lastweek2=FALSE,
+                         prob_sum_contact_lastweek=FALSE,
+                         townrank1 = FALSE,
+                         townrank2 = FALSE,
+                         pchange = FALSE
+                         )) ,
+                         rownames=FALSE,
+                         class='cell-border stripe'
+)
+```
+
+# To Do
+
+* In clean-data.r: Rank of town in state and rank of cbg in state. Make this easy to use in Rmd's! 
+* dynamic executive summary
+
+```{r child = 'footer.md'}
+```
+
+
+
+

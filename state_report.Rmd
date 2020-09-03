@@ -1,0 +1,34 @@
+---
+title: CT state report
+output: html_document
+---
+
+
+```{r}
+
+load("ct_data.Rsave")
+
+
+dat_by_town_lastweek_mean = aggregate(prob_sum_contact ~ town, data=dat_by_town_lastweek, mean)
+dat_by_town_lastweek2_mean = aggregate(prob_sum_contact ~ town, data=dat_by_town_lastweek2, mean)
+
+ntowns = dim(dat_by_town_lastweek_mean)[1]
+
+dat_by_town_lastweek_mean$rank = ntowns + 1 - rank(dat_by_town_lastweek_mean$prob_sum_contact)
+dat_by_town_lastweek2_mean$rank = ntowns + 1 - rank(dat_by_town_lastweek2_mean$prob_sum_contact)
+
+dat_by_town_week_comparison = merge(dat_by_town_lastweek_mean, dat_by_town_lastweek2_mean, by="town", suffixes=c("_lastweek", "_lastweek2"))
+
+rownames(dat_by_town_week_comparison) = NULL
+
+
+ord = order(dat_by_town_week_comparison$prob_sum_contact_lastweek, decreasing=TRUE)
+
+print(head(dat_by_town_week_comparison[ord,], 20))
+
+write.csv(head(dat_by_town_week_comparison[ord,], 20), file="top_20_ct_towns.csv")
+
+```
+
+
+
