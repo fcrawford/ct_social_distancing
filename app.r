@@ -39,7 +39,8 @@ basemap = leaflet() %>%
           addProviderTiles("Esri.WorldImagery", group="Esri.WorldImagery") %>%
           addProviderTiles("Esri.WorldStreetMap", group="Esri.WorldStreetMap") %>%
           addProviderTiles("CartoDB.Voyager", group="CartoDB.Voyager") %>%
-          setView(-72.694684, 41.538881, zoom=9) %>%
+          #setView(-72.694684, 41.538881, zoom=9) %>% # Middletown
+          setView(-73.011905, 41.289133, zoom=9) %>% # New Haven/Milford
           addEasyButton(easyButton(
             icon="fa-crosshairs", title="Locate Me",
             onClick=JS("function(btn, map){ map.locate({setView: true}); }")))
@@ -55,14 +56,15 @@ pal_cbg_home = colorBin("Greens", domain=NULL, bins=c(seq(0,8,by=1),Inf)) #dat_m
 
 
 ui <- bootstrapPage(
-  div(class="outer", tags$head(includeCSS("styles.css")),
-  leafletOutput("mymap", width="100%", height="700px"),
-  absolutePanel(
-    top = 3, left = 60, 
-    style = "z-index:500; text-align: left;",
-    tags$h2("Connecticut Social Contact Explorer")
-  ),
-  absolutePanel(id = "controls", class = "panel panel-default",
+  navbarPage(theme = shinytheme("flatly"), collapsible = TRUE, "Connecticut Social Contact Trends", id="nav",
+   tabPanel("Explorer", div(class="outer", tags$head(includeCSS("styles.css")),
+    leafletOutput("mymap", width="100%", height="100%"),
+    #absolutePanel(
+      #top = 3, left = 60, 
+      #style = "z-index:500; text-align: left;",
+      #tags$h2("Connecticut Social Contact Explorer")
+    #),
+    absolutePanel(id = "controls", class = "panel panel-default",
                top = 75, left = 60, width = 250, fixed=TRUE,
                draggable = TRUE, height = "auto",
                #h4("Controls"),
@@ -75,10 +77,19 @@ ui <- bootstrapPage(
                  value = daymax,
                  timeFormat = "%d %b", 
                  animate=animationOptions(interval = 1000, loop = FALSE))),
-  plotOutput("contact_curve", height="300px", width="100%"),
+      absolutePanel(id="lot", class = "panel panel-default",
+               bottom = "10%", left = "10%", height = 150, width = 800, #fixed=TRUE, 
+               draggable = TRUE, 
+                 plotOutput("contact_curve", height="200px", width="800px"))
+      )),
+  tabPanel("About",
+  fluidPage(
+  fluidRow(
+    column(12, 
   #plotOutput("contact_curve_areas", height="300px", width="100%"),
-  p("Developed by Forrest W. Crawford and Whitespace Solutions Inc.")
-  ) # div class=outer
+    includeMarkdown("footer.md")
+    )))
+  ) ) 
 )
 
 ###########################
@@ -138,8 +149,9 @@ server = function(input, output, session) {
 
   output$contact_curve <- renderPlot({
     contact_max = max(dat_by_state$prob_sum)
+    par(mar=c(4,4,1,2))
     plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
-         ylim=c(0,max(dat_by_state$prob_sum)), xlab="", ylab="Number of contacts detected statewide", axes=FALSE, main=)
+         ylim=c(0,max(dat_by_state$prob_sum)), xlab="", ylab="Number of contacts (statewide)", axes=FALSE, main=)
     axis(1,at=dat_by_state$date, lab=format(dat_by_state$date, "%b %d"))
     axis(2)
 
