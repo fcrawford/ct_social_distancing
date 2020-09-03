@@ -315,7 +315,11 @@ as.datatable(
 * In clean-data.r: Rank of town in state and rank of cbg in state. Make this easy to use in Rmd's! 
 * dynamic executive summary
 
-```{r child = 'footer.md'}
+```{r child = 'about_report.md'}
+```
+```{r child = 'ack.md'}
+```
+```{r child = 'contact.md'}
 ```
 
 

@@ -173,7 +173,7 @@ ui <- bootstrapPage(
   fluidPage(
   fluidRow(
     column(12, 
-    includeMarkdown("about.md"),
+    includeMarkdown("about_web.md"),
     includeMarkdown("ack.md"),
     includeMarkdown("contact.md")
     )))) 
