@@ -55,8 +55,8 @@ pal_cbg_contact = colorBin("Greens", domain=NULL, bins=c(seq(0,8,by=1),Inf))
 pal_town_home = colorBin("Blues", domain=NULL, bins=c(seq(0,30,by=5),Inf)) 
 pal_cbg_home = colorBin("Blues", domain=NULL, bins=c(seq(0,8,by=1),Inf)) 
 
-pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red"), 
-                                     levels = c("Hospital", "House of Worship", "Sports Venue", "Mall"))
+pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red", "yellow"), 
+                                     levels = c("Hospital", "House of Worship", "Sports Venue", "Mall", "University"))
 
 
 #############################
@@ -133,11 +133,6 @@ ui <- bootstrapPage(
   navbarPage(theme = shinytheme("flatly"), collapsible = TRUE, "Connecticut Social Contact Trends (beta)", id="nav",
    tabPanel("Explorer", div(class="outer", tags$head(includeCSS("styles.css")),
     leafletOutput("mymap", width="100%", height="100%"),
-    #absolutePanel(
-      #top = 3, left = 60, 
-      #style = "z-index:500; text-align: left;",
-      #tags$h2("Connecticut Social Contact Explorer")
-    #),
     absolutePanel(id = "controls", class = "panel panel-default",
                top = 75, left = 60, width = 250, fixed=TRUE,
                draggable = TRUE, height = "auto",
@@ -151,10 +146,10 @@ ui <- bootstrapPage(
                  value = daymax,
                  timeFormat = "%d %b", 
                  animate=animationOptions(interval = 1000, loop = FALSE))),
-      absolutePanel(id="lot", class = "panel panel-default",
-               bottom = "10%", left = "10%", height = 150, width = 800, #fixed=TRUE, 
+      absolutePanel(id="plot", class = "panel panel-default", # plot panel
+               bottom = "5%", left = "10%", height = 250, width = 800, 
                draggable = TRUE, 
-                 plotOutput("contact_curve", height="200px", width="800px"))
+                 plotOutput("contact_curve", height="250px", width="800px"))
       )),
   tabPanel("Towns",
   fluidPage(
@@ -187,14 +182,45 @@ ui <- bootstrapPage(
 server = function(input, output, session) {
 
 
+  #data_of_click <- reactiveValues(clickedShape=NULL)
+
+ # observeEvent(input$mymap_shape_click,{
+ #   data_of_click$clickedMarker <- input$mymap_shape_click
+ # })
+
+   #id_clicked = "New Haven"
+
+   #observe({ 
+       #id_clicked <- input$mymap_shape_click$id
+   #})
 
 
   output$town_table <- DT::renderDataTable(dat_by_town_week_comparison, rownames=FALSE) 
 
   output$cbg_table <- DT::renderDataTable(dat_by_cbg_week_comparison, rownames=FALSE) 
 
-  output$contact_curve_areas <- renderPlot({
+  # abstract this out and put in util.r 
+  output$contact_curve <- renderPlot({
+    contact_max = max(dat_by_state$prob_sum)
+    par(mar=c(2.5,4,1,1), mfrow=c(2,1))
+    plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
+         ylim=c(0,max(dat_by_state$prob_sum)*1.1), xlab="", ylab="Contacts", axes=FALSE, main="Connecticut total")
+    dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
+    #axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
+    axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
+    #axis(1,at=dat_by_state$date, lab=format(dat_by_state$date, "%b %d"))
+    axis(2)
 
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+
+    abline(v=input$plot_date)
+    text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
+    points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
+    text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
+
+
+
+    # area plot
     if(input$metric_type == "home") {
       if(input$area_level == "town") {
         db = dat_merged_towns
@@ -215,54 +241,31 @@ server = function(input, output, session) {
       stop("invalid metric type")
     }
 
-
-    # this function below is not used right now. 
-    contact_max = max(db_metric)
-    output$contact_curve_area = plot(0, type="n", xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
-             ylim=c(0,max(db_metric)), xlab="", ylab="Number of contacts detected", axes=FALSE, main=)
-    axis(1,at=db$date, lab=format(db$date, "%b %d"))
-    axis(2)
-
-    area_names = unique(db$area_name)
-
-    for(area_name in area_names) {
-      lines(db$date[db$area_name ==  area_name], db_metric[db$area_name == area_name], col=rgb(0,0,0,alpha=0.3))
+    id_click = input$mymap_shape_click$id
+    if(is.null(id_click) || !(id_click %in% db$area_name)) {
+      if(input$area_level == "town") {
+        id_click = "New Haven"
+      } else {
+        id_click = "New Haven-090091403002"
+      }
     }
 
-    # this does not work! 
-    if(!is.null(input$mymap_shape_clicked$id)) {
-      lines(db$date[db$area_name ==  input$mymap_shape_clicked$id], db_metric[db$area_name == input$mymap_shape_clicked$id], col="red", lwd=2)
-    }
-
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.2), border=NA) }
-
-    abline(v=input$plot_date)
-    text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
-    points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
-    text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
-  })
-
-
-
-
-  # abstract this out and put in util.r 
-  output$contact_curve <- renderPlot({
-    contact_max = max(dat_by_state$prob_sum)
-    par(mar=c(3,4,1,1))
-    plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
-         ylim=c(0,max(dat_by_state$prob_sum)), xlab="", ylab="Number of contacts (statewide)", axes=FALSE, main=)
-    dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
-    #axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
+    contact_max = max(db_metric[db$area_name ==  id_click])
+    plot(0, type="n", xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
+             ylim=c(0,max(db_metric[db$area_name ==  id_click]*1.1)), xlab="", 
+             ylab="Contacts", axes=FALSE, main=id_click)
     axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
-    #axis(1,at=dat_by_state$date, lab=format(dat_by_state$date, "%b %d"))
     axis(2)
 
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.2), border=NA) }
+    lines(db$date[db$area_name ==  id_click], db_metric[db$area_name == id_click], col="black", lwd=2)
+
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
 
     abline(v=input$plot_date)
     text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
     points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
     text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
+
   })
 
   reactive_db = reactive({
@@ -283,9 +286,7 @@ server = function(input, output, session) {
     basemap
   })
 
-  observe({ 
-       print(input$mymap_shape_click$id)
-   })
+
   
   observeEvent(
   {input$plot_date   # this is a hack to get observeEvent to notice if either plot_date or area_level have changed. 
@@ -322,15 +323,15 @@ server = function(input, output, session) {
     clearMarkers() %>%
     clearShapes() %>%
     clearControls() %>% # remove legend
-    addPolygons(data = reactive_db(), stroke = FALSE, smoothFactor = 0.1, fillOpacity = 0.8, 
+    addPolygons(data = reactive_db(), stroke = TRUE, weight=1, color = "#999", smoothFactor = 0.1, fillOpacity = 0.8, 
                 fillColor = ~pal(db_metric),
                 group = "Metric",
                 layerId = ~area_name,
                 label = sprintf("<strong>%s</strong><br/>%g", reactive_db()$area_name, db_metric) %>% lapply(htmltools::HTML),
-                  labelOptions = labelOptions(
+                labelOptions = labelOptions(
                     style = list("font-weight" = "normal", padding = "3px 8px", "color" = "green"),
-                    textsize = "15px", direction = "auto")) %>% 
-
+                    textsize = "15px", direction = "auto"),
+                highlight = highlightOptions(stroke=TRUE, weight=6, bringToFront=FALSE, color = "#999")) %>%
        addCircleMarkers(data=points_of_interest, lat = ~ lat, lng = ~ lon, 
                  weight = 1, stroke=FALSE, radius = pointrad, fillOpacity = 0.3, 
                  group = "Points of Interest",
@@ -340,33 +341,7 @@ server = function(input, output, session) {
                  labelOptions = labelOptions(
                    style = list("font-weight" = "normal", padding = "3px 8px"),
                    textsize = "15px", direction = "auto")) %>% 
-
-
-    #addCircleMarkers(data=hospitals, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = ~(POPULATION)^(1/4), 
-                 #fillOpacity = 0.2, color = "blue", group = "Hospitals",
-                 #label = sprintf("<strong>%s</strong><br/>%s %s", hospitals$NAME, hospitals$ADDRESS, hospitals$CITY) %>% lapply(htmltools::HTML),
-                 #labelOptions = labelOptions(
-                   #style = list("font-weight" = "normal", padding = "3px 8px", "color" = "blue"),
-                   #textsize = "15px", direction = "auto")) %>% 
-    #addCircleMarkers(data=churches, lat = ~ Y, lng = ~ X, weight = 1, radius = pointrad,
-                 #fillOpacity = 0.2, color = "red", group = "Houses of Worship",
-                 #label = sprintf("<strong>%s</strong><br/>%s %s", churches$NAME, churches$STREET, churches$CITY) %>% lapply(htmltools::HTML),
-                 #labelOptions = labelOptions(
-                   #style = list("font-weight" = "normal", padding = "3px 8px", "color" = "red"),
-                   #textsize = "15px", direction = "auto")) %>% 
-    #addCircleMarkers(data=malls, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = pointrad,
-                 #fillOpacity = 0.2, color = "orange", group = "Malls",
-                 #label = sprintf("<strong>%s</strong><br/>%s", malls$NAME, malls$CITY) %>% lapply(htmltools::HTML),
-                 #labelOptions = labelOptions(
-                   #style = list("font-weight" = "normal", padding = "3px 8px", "color" = "red"),
-                   #textsize = "15px", direction = "auto")) %>% 
-   #addCircleMarkers(data=sportsvenues, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = pointrad,
-                 #fillOpacity = 0.2, color = "purple", group = "Sports Venues",
-                 #label = sprintf("<strong>%s</strong><br/>%s", sportsvenues$NAME, sportsvenues$CITY) %>% lapply(htmltools::HTML),
-                 #labelOptions = labelOptions(
-                   #style = list("font-weight" = "normal", padding = "3px 8px", "color" = "red"),
-                   #textsize = "15px", direction = "auto")) %>%
-   addLegend("bottomright", pal = pal, values = db_metric, title = metric_lab) 
+       addLegend("bottomright", pal = pal, values = db_metric, title = metric_lab) 
                    
 
 

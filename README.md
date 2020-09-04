@@ -46,10 +46,12 @@ The file `ct_data.Rsave` contains data frames and spatial features used to make 
 
 ## All
 
+* In general, town reports need to be more actionable, with some historical interpretation. For example: a big spike in contact in CBG X during these dates may result in new cases...
 * better neighborhood descriptions for CBGs, e.g. <https://rdrr.io/github/CT-Data-Haven/cwi/man/neighborhood_shapes.html>
-* better points of interest: schools, colleges, restaurants, big box stores, DMV, state/municipal buildings
+* better points of interest: schools, car dealerships, parks (baseball diamonds), restaurants, big box stores, DMV, state/municipal buildings. See OpenStreetMap data. 
 * remove "County subdivisions not defined" from towns data frame
 * directory structure for reports, rename files "index.html" within these directories, then deploy to github.io
+* social share links at bottom of pages
 
 
 ## Web app
