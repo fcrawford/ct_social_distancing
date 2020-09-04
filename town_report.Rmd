@@ -57,6 +57,61 @@ dat_town_lastweek2 = dat_town[dat_town$date %within% lastweek2,]
 
 
 
+##########
+# copied from app 
+
+dat_by_town_lastweek_mean = aggregate(prob_sum_contact ~ town, data=dat_by_town_lastweek, mean)
+dat_by_town_lastweek2_mean = aggregate(prob_sum_contact ~ town, data=dat_by_town_lastweek2, mean)
+
+ntowns = dim(dat_by_town_lastweek_mean)[1]
+
+dat_by_town_lastweek_mean$rank = ntowns + 1 - rank(dat_by_town_lastweek_mean$prob_sum_contact)
+dat_by_town_lastweek2_mean$rank = ntowns + 1 - rank(dat_by_town_lastweek2_mean$prob_sum_contact)
+
+dat_by_town_week_comparison = merge(dat_by_town_lastweek_mean, dat_by_town_lastweek2_mean, by="town", suffixes=c("_lastweek", "_lastweek2"))
+
+rownames(dat_by_town_week_comparison) <- NULL
+
+ord = order(dat_by_town_week_comparison$prob_sum_contact_lastweek, decreasing=TRUE)
+
+dat_by_town_week_comparison = dat_by_town_week_comparison[ord,]
+
+names(dat_by_town_week_comparison) <- c("Town", "Contact this week", "Rank this week", "Contact last week", "Rank last week")
+
+ntowns = dim(dat_by_town_week_comparison)[1]
+
+applyQuartiles <- function(x) {
+  cut(x, breaks=c(quantile(x, probs = seq(0, 1, by = 0.25))), 
+      labels=c(
+      "excellent, in the first quartile",
+      "good, in the second quartile",
+      "poor, in the third quartile",
+      "severe, in the top quartile"), include.lowest=TRUE)
+}
+
+# severity for all towns
+dat_by_town_week_comparison$town_severity = applyQuartiles(dat_by_town_week_comparison$`Contact this week`)
+
+# this town
+town_severity = dat_by_town_week_comparison$town_severity[dat_by_town_week_comparison$Town == town]
+
+town_rank_lastweek  = dat_by_town_lastweek_mean$rank[dat_by_town_lastweek_mean$town == town]
+town_rank_lastweek2  = dat_by_town_lastweek2_mean$rank[dat_by_town_lastweek2_mean$town == town]
+town_rank_change = town_rank_lastweek - town_rank_lastweek2
+town_rank_change_string = paste(ifelse(town_rank_change>0,"+",ifelse(town_rank_change<0,"-","")), town_rank_change, sep="")
+
+town_contact_lastweek = dat_by_town_lastweek_mean$prob_sum_contact[dat_by_town_lastweek_mean$town == town]
+town_contact_lastweek2 = dat_by_town_lastweek2_mean$prob_sum_contact[dat_by_town_lastweek2_mean$town == town]
+
+town_trend = (town_contact_lastweek - town_contact_lastweek2)/town_contact_lastweek2
+town_trend_string = paste(ifelse(town_trend>0,"+",ifelse(town_trend<0,"-","")), format(town_trend,digits=2), "%", sep="")
+
+
+
+# end copied from app
+##################
+
+
 
 dat_cbg = dat_by_cbg[dat_by_cbg$geoid %in% town_cbgs$GEOID,]
 
@@ -104,13 +159,18 @@ title: `r town`, Connecticut | Social Contact Report (beta)
 subtitle: `r format(startdate, "%B %d")` -- `r format(enddate, "%B %d, %Y")`  
 ---
 
-The maps below show contact rates (left, in <font color=\"#00AA00\"><b>green</b></font>) and home residences of individuals having contact (right, in <font color=\"#0000AA\"><b>blue</b></font>) for block groups in `r town`.  These are areas where communications, policies, or guidelines to improve social distancing may be helpful. 
+This report provides data and visualizations showing trends in social contact patterns in Connecticut.  When combined with data on the geographic patterns of testing and cases, this information may assist public health officials and policymakers in taking actions to mitigate the spread of COVID-19 in Connecticut.  High contact does not necessarily mean that COVID-19 transmission is happening, but close interpersonal contact is a necessary condition for transmission to occur.  Statewide interactive maps are available from the [interactive web application](https://forrestcrawford.shinyapps.io/ct_social_distancing/).
+
+### Executive Summary 
+
+Overall the contact rate in `r town` is `r town_severity` of all `r ntowns` towns in Connecticut this week.  Contact in `r town` is ranked number `r town_rank_lastweek` in Connecticut this week, of `r ntowns` towns, which means that `r ifelse(town_rank_lastweek<50,"only","")` `r town_rank_lastweek-1` towns in Connecticut had more contact than `r town`.  Last week `r town` was ranked `r town_rank_lastweek2`, for a change of `r town_rank_change_string`.  Contact in `r town` is trending `r ifelse(town_trend<0,"downward", "upward")`, with a `r town_trend_string` change from last week. 
+
 
 <div class = "row">
 <div class = "col-md-6">
 #### Areas where contact is happening
 
-These are areas where communications, policies, or guidelines to improve social distancing may be helpful. 
+This map shows <font color=\"#00AA00\"><b>contact rates</b></font> in `r town` census block groups.  Dark green regions are areas where communications, policies, or guidelines to *improve social distancing* may be helpful.  
 
 ```{r echo=FALSE, out.width='100%'}
 
@@ -162,7 +222,8 @@ map
 <div class = "col-md-6">
 #### Areas where contacting individuals reside
 
-These are areas where allocating healthcare, testing, and contact tracing resources may be helpful. 
+This map shows <font color=\"#0000AA\"><b>home residence locations</b></font> of individuals having contact in `r town` census block groups.  Dark blue regions are areas where enhanced *testing and contact tracing* may be helpful. 
+
 
 ```{r echo=FALSE, out.width='100%'}
 
@@ -192,9 +253,9 @@ map2
 </div>
 </div>
 
+Alternative base maps and points of interest can be displayed via the layers menu in the upper right corner.
 
-
-
+The plot below shows contact trends in `r town` over time in <font color=\"#00AA00\"><b>contact rates</b></font>, with trends for individual census block groups shown in black. Gray bars represent weekends. 
 
 ```{r, echo=FALSE, out.width='100%', fig.width=12, fig.height=4}
 
@@ -202,10 +263,11 @@ saturdays = seq(mdy("2/1/2020"), today(), by="week")
 sundays = seq(mdy("2/2/2020"), today(), by="week")
 
 par(mar=c(4,4,1,1), bty="n")
-contact_max = max(dat_town$prob_sum_contact)
     plot(dat_town$date, dat_town$prob_sum_contact, type="l", col="green", lwd=3, xlim=c(min(dat_town$date)-1, max(dat_town$date)+14),
          ylim=c(0,max(dat_town$prob_sum_contact)), xlab="", ylab="Number of contacts in town", axes=FALSE, main=)
-    axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
+    dateseq = c(seq(min(dat_town$date), max(dat_town$date), by="month"), max(dat_town$date))
+    #axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
+    axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
     axis(2)
    text(dat_town$date[length(dat_town$date)], dat_town$prob_sum_contact[length(dat_town$prob_sum_contact)], town, pos=4, col="green")
 
@@ -214,40 +276,16 @@ contact_max = max(dat_town$prob_sum_contact)
       dat_cbg_i = dat_cbg[dat_cbg$geoid == cbg_geoids[i],]
       lines(dat_cbg_i$date, dat_cbg_i$prob_sum_contact)
       text(dat_cbg_i$date[length(dat_cbg_i$date)], dat_cbg_i$prob_sum_contact[length(dat_cbg_i$prob_sum_contact)], cbg_geoids[i], pos=4)
-
     }
-
     
-
     for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.2), border=NA) }
 
-    #abline(v=input$plot_date)
-    #text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
-    #points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
-    #text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
 ```
 
 
-<style>
-div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
-</style>
-<div class = "green">
-
-### Executive Summary 
-
-Overall contact in `r town` is ...
-
-Contact `r town` is ranked number X in Connecticut this week, of XXX towns.  That means that XX towns in Connecticut had more contact than `r town`.  
-
-- This is my first conclusion
-- This is my second conclusion
-
-Statewide maps are available in the [interactive web application](https://forrestcrawford.shinyapps.io/ct_social_distancing/).
-
-</div>
-
-
 ### Top contact areas in `r town` 
+
+The table below shows contact by census block groups in `r town`, along with points of interest (hospitals, houses of worship, malls, and sports venues) that may contribute to contact rates.  Also shown are percent change and rank in `r town`. Find specific block groups or points of interest in the search box. The table can be sorted by value for each column. 
 
 ```{r echo=FALSE}
 library(formattable)
@@ -309,11 +347,6 @@ as.datatable(
                          class='cell-border stripe'
 )
 ```
-
-# To Do
-
-* In clean-data.r: Rank of town in state and rank of cbg in state. Make this easy to use in Rmd's! 
-* dynamic executive summary
 
 ```{r child = 'about_report.md'}
 ```

@@ -129,8 +129,8 @@ dat_by_cbg_week_comparison = dat_by_cbg_week_comparison[ord,]
 
 
 ui <- bootstrapPage(
-  navbarPage(theme = shinytheme("flatly"), collapsible = TRUE, "Connecticut Social Contact Trends", id="nav",
-   tabPanel("Explorer (beta)", div(class="outer", tags$head(includeCSS("styles.css")),
+  navbarPage(theme = shinytheme("flatly"), collapsible = TRUE, "Connecticut Social Contact Trends (beta)", id="nav",
+   tabPanel("Explorer", div(class="outer", tags$head(includeCSS("styles.css")),
     leafletOutput("mymap", width="100%", height="100%"),
     #absolutePanel(
       #top = 3, left = 60, 
@@ -247,10 +247,13 @@ server = function(input, output, session) {
   # abstract this out and put in util.r 
   output$contact_curve <- renderPlot({
     contact_max = max(dat_by_state$prob_sum)
-    par(mar=c(4,4,1,2))
+    par(mar=c(3,4,1,1))
     plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
          ylim=c(0,max(dat_by_state$prob_sum)), xlab="", ylab="Number of contacts (statewide)", axes=FALSE, main=)
-    axis(1,at=dat_by_state$date, lab=format(dat_by_state$date, "%b %d"))
+    dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
+    #axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
+    axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
+    #axis(1,at=dat_by_state$date, lab=format(dat_by_state$date, "%b %d"))
     axis(2)
 
     for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.2), border=NA) }

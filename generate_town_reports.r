@@ -7,6 +7,7 @@ load("ct_data.Rsave")
 town_names = ct_towns$NAME
 town_names = town_names[town_names != "County Subdivisions Not Defined"]
 
+dir.create(file.path(".", "reports"), showWarnings = FALSE)
 
 ########################
 
@@ -25,7 +26,7 @@ for(town_name in town_names) {
 
   render("town_report.Rmd", 
          param=list(town=town_name),
-         output_file=paste("town_reports/", town_name_file, "_report.html", sep=""))
+         output_file=paste("reports/", town_name_file, "_report.html", sep=""))
 
   ctr = ctr + 1
 }
