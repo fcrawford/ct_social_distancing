@@ -56,15 +56,12 @@ The file `ct_data.Rsave` contains data frames and spatial features used to make 
 
 ## Web app
 
-* link shape click to plot update
-* plotly line plots? 
-* sparklines in tables? 
+* sparklines in tables
 
 ## Town report
 
-* highlight top 5 CBGs
-* sparklines in tables
 * are houses of worship relevant to include? Not sure. 
+* sparklines in tables
 
 
 ## State report
@@ -73,6 +70,7 @@ The file `ct_data.Rsave` contains data frames and spatial features used to make 
 * show town-level maps
 * highlight top 5 towns in plot
 * show table like in web app
+* sparklines in tables
 
 
 

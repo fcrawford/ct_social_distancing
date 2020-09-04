@@ -168,6 +168,7 @@ Overall the contact rate in `r town` is `r town_severity` of all `r ntowns` town
 
 <div class = "row">
 <div class = "col-md-6">
+
 #### Areas where contact is happening
 
 This map shows <font color=\"#00AA00\"><b>contact rates</b></font> in `r town` census block groups.  Dark green regions are areas where communications, policies, or guidelines to *improve social distancing* may be helpful.  
@@ -178,8 +179,8 @@ This map shows <font color=\"#00AA00\"><b>contact rates</b></font> in `r town` c
 pal_cbg_contact <- colorNumeric("Greens", domain=dat_merged_cbgs_historical$prob_sum_contact_lastweek) 
 
 
-pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red"), 
-                                     levels = c("Hospital", "House of Worship", "Sports Venue", "Mall"))
+pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red", "yellow"), 
+                                     levels = c("Hospital", "House of Worship", "Sports Venue", "Mall", "University"))
 
 pointrad = 5
 
@@ -220,6 +221,7 @@ map
 </div>
 
 <div class = "col-md-6">
+
 #### Areas where contacting individuals reside
 
 This map shows <font color=\"#0000AA\"><b>home residence locations</b></font> of individuals having contact in `r town` census block groups.  Dark blue regions are areas where enhanced *testing and contact tracing* may be helpful. 
@@ -255,30 +257,48 @@ map2
 
 Alternative base maps and points of interest can be displayed via the layers menu in the upper right corner.
 
-The plot below shows contact trends in `r town` over time in <font color=\"#00AA00\"><b>contact rates</b></font>, with trends for individual census block groups shown in black. Gray bars represent weekends. 
+The plots below show trends in `r town` over time in <font color=\"#00AA00\"><b>contact rates</b></font>, with trends for individual census block groups shown in below. The five block groups with the top contact rates this week are shown in black. Gray bars represent weekends. 
 
-```{r, echo=FALSE, out.width='100%', fig.width=12, fig.height=4}
+```{r, echo=FALSE, out.width='100%', fig.width=12, fig.height=6}
 
 saturdays = seq(mdy("2/1/2020"), today(), by="week")
 sundays = seq(mdy("2/2/2020"), today(), by="week")
 
-par(mar=c(4,4,1,1), bty="n")
-    plot(dat_town$date, dat_town$prob_sum_contact, type="l", col="green", lwd=3, xlim=c(min(dat_town$date)-1, max(dat_town$date)+14),
-         ylim=c(0,max(dat_town$prob_sum_contact)), xlab="", ylab="Number of contacts in town", axes=FALSE, main=)
-    dateseq = c(seq(min(dat_town$date), max(dat_town$date), by="month"), max(dat_town$date))
-    #axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
-    axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
-    axis(2)
-   text(dat_town$date[length(dat_town$date)], dat_town$prob_sum_contact[length(dat_town$prob_sum_contact)], town, pos=4, col="green")
 
-    cbg_geoids = unique(dat_cbg$geoid)
-    for(i in 1:length(cbg_geoids)) {
-      dat_cbg_i = dat_cbg[dat_cbg$geoid == cbg_geoids[i],]
-      lines(dat_cbg_i$date, dat_cbg_i$prob_sum_contact)
-      text(dat_cbg_i$date[length(dat_cbg_i$date)], dat_cbg_i$prob_sum_contact[length(dat_cbg_i$prob_sum_contact)], cbg_geoids[i], pos=4)
-    }
-    
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.2), border=NA) }
+
+contact_max = max(dat_town$prob_sum_contact)
+
+par(mar=c(2.5,4,1,1), mfrow=c(2,1))
+
+# town total
+
+plot(dat_town$date, dat_town$prob_sum_contact, type="l", col="green", lwd=3, xlim=c(min(dat_town$date)-1, max(dat_town$date)+14),
+         ylim=c(0,max(dat_town$prob_sum_contact)*1.1), xlab="", ylab="Contacts", axes=FALSE, main=paste(town,"total"))
+dateseq = c(seq(min(dat_town$date), max(dat_town$date), by="month"), max(dat_town$date))
+axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
+axis(2)
+for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+
+# CBGs
+
+plot(0, type="n", xlim=c(min(dat_cbg$date)-1, max(dat_cbg$date)+14),
+     ylim=c(0,max(dat_cbg$prob_sum_contact)*1.1),
+     xlab="", 
+     ylab="Contacts", axes=FALSE, main="Top block groups")
+axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
+axis(2)
+
+
+for(cbg_id in dat_cbg$geoid) {
+  cbg_rank = cbg_historical$townrank1[cbg_historical$geoid == cbg_id]
+  cbg_dates = dat_cbg$date[dat_cbg$geoid == cbg_id]
+  cbg_contact = dat_cbg$prob_sum_contact[dat_cbg$geoid == cbg_id]
+  cbg_col = ifelse(cbg_rank<=5,"black", "gray")
+  lines(cbg_dates, cbg_contact,  col=cbg_col)
+  text(cbg_dates[length(cbg_dates)], cbg_contact[length(cbg_contact)], cbg_id, col=cbg_col, pos=4)
+}
+
+for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
 
 ```
 

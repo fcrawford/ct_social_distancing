@@ -3,6 +3,11 @@ title: CT state report
 output: html_document
 ---
 
+Before doing this, streamline code in app and town report. Abstract out what can be done in advance. Then show
+* 2 pictures of all towns in state, contact and home
+* Town trends
+* top towns
+* top cbgs
 
 ```{r}
 
