@@ -198,7 +198,7 @@ basemap = leaflet() %>%
           addPolygons(data=town_boundary, fill=NULL, stroke=TRUE, weight=8, fillOpacity=0, color="black") 
 
 map = basemap %>% addPolygons(data=dat_merged_cbgs_historical, 
-                      stroke = TRUE, weight=1, smoothFactor = 0.1, fillOpacity = 0.8, 
+                      stroke = TRUE, weight=1, col="gray", smoothFactor = 0.1, fillOpacity = 0.8, 
                       fillColor = ~pal_cbg_contact(dat_merged_cbgs_historical$prob_sum_contact_lastweek), 
                       group = "Metric",
                       label = sprintf("<strong>%s</strong><br/>%g", dat_merged_cbgs_historical$GEOID, dat_merged_cbgs_historical$prob_sum_contact_lastweek) %>% lapply(htmltools::HTML),
@@ -232,7 +232,7 @@ This map shows <font color=\"#0000AA\"><b>home residence locations</b></font> of
 pal_cbg_home = colorNumeric("Blues", domain=dat_merged_cbgs_historical$prob_sum_home) 
 
 map2 = basemap %>% addPolygons(data=dat_merged_cbgs_historical, 
-                      stroke = FALSE, smoothFactor = 0.1, fillOpacity = 0.8, 
+                      stroke = TRUE, weight=1, col="gray", smoothFactor = 0.1, fillOpacity = 0.8, 
                       fillColor = ~pal_cbg_home(dat_merged_cbgs_historical$prob_sum_home), 
                       group = "Metric",
                       label = sprintf("<strong>%s</strong><br/>%g", dat_merged_cbgs_historical$GEOID, dat_merged_cbgs_historical$prob_sum_home) %>% lapply(htmltools::HTML),

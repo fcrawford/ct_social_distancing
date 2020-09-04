@@ -251,7 +251,7 @@ server = function(input, output, session) {
     }
 
     contact_max = max(db_metric[db$area_name ==  id_click])
-    plot(0, type="n", xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
+    plot(0, type="n", xlim=c(min(db$date)-1, max(db$date)+1),
              ylim=c(0,max(db_metric[db$area_name ==  id_click]*1.1)), xlab="", 
              ylab="Contacts", axes=FALSE, main=id_click)
     axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
@@ -263,8 +263,9 @@ server = function(input, output, session) {
 
     abline(v=input$plot_date)
     text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
-    points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
-    text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
+    points(input$plot_date, db_metric[db$area_name == id_click & db$date == input$plot_date], pch=16)
+    text(input$plot_date, db_metric[db$area_name == id_click & db$date == input$plot_date], 
+          format(db_metric[db$area_name == id_click & db$date == input$plot_date], digits=1), pos=4)
 
   })
 
