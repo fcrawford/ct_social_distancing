@@ -7,6 +7,7 @@ library(htmlwidgets)
 library(shiny)
 library(shinythemes)
 library(DT)
+library(sf)
 
 #####################################
 # load data

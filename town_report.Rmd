@@ -25,8 +25,8 @@ ct_towns = ct_towns %>% sf::st_transform(4326)
 ct_cbgs = ct_cbgs %>% sf::st_transform(4326)
 
 # should be prior week using today() 
-startdate = mdy("8/20/2020")
-enddate = mdy("8/26/2020")
+startdate = min(dat_by_town$date)
+enddate = max(dat_by_town$date)
 
 
 
@@ -156,7 +156,7 @@ bdry = as.numeric(st_bbox(town_boundary))
 
 ---
 title: `r town`, Connecticut | Social Contact Report (beta)
-subtitle: `r format(startdate, "%B %d")` -- `r format(enddate, "%B %d, %Y")`  
+subtitle: `r format(oneweekago, "%B %d")` -- `r format(lastdate, "%B %d, %Y")`  
 ---
 
 This report provides data and visualizations showing trends in social contact patterns in Connecticut.  When combined with data on the geographic patterns of testing and cases, this information may assist public health officials and policymakers in taking actions to mitigate the spread of COVID-19 in Connecticut.  High contact does not necessarily mean that COVID-19 transmission is happening, but close interpersonal contact is a necessary condition for transmission to occur.  Statewide interactive maps are available from the [interactive web application](https://forrestcrawford.shinyapps.io/ct_social_distancing/).

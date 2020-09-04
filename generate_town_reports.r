@@ -7,12 +7,13 @@ load("ct_data.Rsave")
 town_names = ct_towns$NAME
 town_names = town_names[town_names != "County Subdivisions Not Defined"]
 
+# creates only if the dir does not already exist
 dir.create(file.path(".", "reports"), showWarnings = FALSE)
 
 ########################
 
 # testing: 
-town_names = c("Danbury", "New Haven", "Hartford", "Bridgeport", "Stamford", "Waterbury")
+#town_names = c("Danbury", "New Haven", "Hartford", "Bridgeport", "Stamford", "Waterbury")
 
 ctr = 1
 
