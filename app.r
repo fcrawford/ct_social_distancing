@@ -8,6 +8,7 @@ library(shiny)
 library(shinythemes)
 library(DT)
 library(sf)
+library(dplyr)
 
 #####################################
 # load data
@@ -147,9 +148,9 @@ ui <- bootstrapPage(
                  timeFormat = "%d %b", 
                  animate=animationOptions(interval = 1000, loop = FALSE))),
       absolutePanel(id="plot", class = "panel panel-default", # plot panel
-               bottom = "5%", left = "10%", height = 250, width = 800, 
+               bottom = "2%", left = "2%", height = 275, width = 900, 
                draggable = TRUE, 
-                 plotOutput("contact_curve", height="250px", width="800px"))
+                 plotOutput("contact_curve", height="275", width="900px"))
       )),
   tabPanel("Towns",
   fluidPage(
@@ -202,23 +203,38 @@ server = function(input, output, session) {
   # abstract this out and put in util.r 
   output$contact_curve <- renderPlot({
     contact_max = max(dat_by_state$prob_sum)
-    par(mar=c(2.5,4,1,1), mfrow=c(2,1))
+    par(mar=c(2.5,4,1,1)) 
+    layout(matrix(c(1,2,3,4),nrow=2, byrow=TRUE), widths=c(2,1), heights=1)
+
+    # state, full range
     plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
          ylim=c(0,max(dat_by_state$prob_sum)*1.1), xlab="", ylab="Contacts", axes=FALSE, main="Connecticut total")
     dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
-    #axis(1,at=dat_town$date, lab=format(dat_town$date, "%b %d"))
     axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
-    #axis(1,at=dat_by_state$date, lab=format(dat_by_state$date, "%b %d"))
     axis(2)
-
     for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
-
     abline(v=input$plot_date)
     text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
     points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
     text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
 
-
+    # last month
+    par(mar=c(2.5,2,1,1)) 
+    dat_by_state_lastmonth = filter(dat_by_state, date > max(dat_by_state$date)-30)
+    plot(dat_by_state_lastmonth$date, dat_by_state_lastmonth$prob_sum, type="l", col="green", lwd=3, 
+        xlim=c(max(dat_by_state$date)-30, max(dat_by_state$date)+3),
+         #ylim=c(0,max(dat_by_state_lastmonth$prob_sum)*1.1), 
+         xlab="", 
+         ylab="", #"Contacts", 
+         axes=FALSE, main="Connecticut total (last 30 days)")
+    dateseq_lastmonth = c(seq(min(dat_by_state_lastmonth$date), max(dat_by_state_lastmonth$date), by="week"), max(dat_by_state$date))
+    axis(1,at=dateseq_lastmonth, lab=format(dateseq_lastmonth, "%b %d"))
+    axis(2)
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    abline(v=input$plot_date)
+    text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
+    points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
+    text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
 
     # area plot
     if(input$metric_type == "home") {
@@ -251,21 +267,46 @@ server = function(input, output, session) {
     }
 
     contact_max = max(db_metric[db$area_name ==  id_click])
+    par(mar=c(2.5,4,1,1)) 
     plot(0, type="n", xlim=c(min(db$date)-1, max(db$date)+1),
              ylim=c(0,max(db_metric[db$area_name ==  id_click]*1.1)), xlab="", 
              ylab="Contacts", axes=FALSE, main=id_click)
+    dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
     axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
     axis(2)
-
     lines(db$date[db$area_name ==  id_click], db_metric[db$area_name == id_click], col="black", lwd=2)
-
     for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
-
     abline(v=input$plot_date)
     text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
     points(input$plot_date, db_metric[db$area_name == id_click & db$date == input$plot_date], pch=16)
     text(input$plot_date, db_metric[db$area_name == id_click & db$date == input$plot_date], 
           format(db_metric[db$area_name == id_click & db$date == input$plot_date], digits=1), pos=4)
+
+    # last month
+    par(mar=c(2.5,2,1,1)) 
+    db_lastmonth = filter(db, date > max(db$date)-30)
+    db_metric_lastmonth = db_metric[db$date > max(db$date)-30]
+    dateseq_lastmonth = c(seq(min(dat_by_state_lastmonth$date), max(dat_by_state_lastmonth$date), by="week"), max(dat_by_state$date))
+    plot(0, type="n", 
+             xlim=c(min(dateseq_lastmonth), max(dateseq_lastmonth)+3),
+             ylim=range(db_metric_lastmonth[db_lastmonth$area_name == id_click]),
+             xlab="", 
+             ylab="", #"Contacts", 
+             axes=FALSE, main=paste(id_click, "(last 30 days)"))
+    axis(1,at=dateseq_lastmonth, lab=format(dateseq_lastmonth, "%b %d"))
+    axis(2)
+    lines(db_lastmonth$date[db_lastmonth$area_name ==  id_click], db_metric_lastmonth[db_lastmonth$area_name == id_click], col="black", lwd=2)
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    abline(v=input$plot_date)
+    text(input$plot_date, max(db_metric_lastmonth), format(input$plot_date, "%b %d"), pos=2) 
+    if(input$plot_date > min(dateseq_lastmonth)) {
+      points(input$plot_date, db_metric_lastmonth[db_lastmonth$area_name == id_click & db_lastmonth$date == input$plot_date], pch=16)
+      text(input$plot_date, db_metric_lastmonth[db_lastmonth$area_name == id_click & db_lastmonth$date == input$plot_date], 
+            format(db_metric_lastmonth[db_lastmonth$area_name == id_click & db_lastmonth$date == input$plot_date], digits=1), pos=4)
+    }
+
+
+
 
   })
 

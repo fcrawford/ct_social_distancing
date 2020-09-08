@@ -14,7 +14,7 @@ dir.create(file.path(".", "reports"), showWarnings = FALSE)
 ########################
 
 # testing: 
-#town_names = c("Danbury", "New Haven", "Hartford", "Bridgeport", "Stamford", "Waterbury")
+town_names = c("Danbury", "New Haven", "Hartford", "Bridgeport", "Stamford", "Waterbury")
 
 
 ctr = 1
@@ -50,7 +50,7 @@ cat("Time to complete processing of towns:\n", format(etime), "\n")
 
 dir.create(file.path("reports", "Connecticut"), showWarnings = FALSE)
 
-render("state_report.Rmd", output_file("reports/Connecticut/index.html"))
+render("state_report.Rmd", output_file="reports/Connecticut/index.html")
 
 
 ################

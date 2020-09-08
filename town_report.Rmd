@@ -305,7 +305,7 @@ for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, c
 
 ### Top contact areas in `r town` 
 
-The table below shows contact by census block groups in `r town`, along with points of interest (hospitals, houses of worship, malls, and sports venues) that may contribute to contact rates.  Also shown are percent change and rank in `r town`. Find specific block groups or points of interest in the search box. The table can be sorted by value for each column. 
+The table below shows contact last week by census block groups in `r town`, along with points of interest (hospitals, houses of worship, malls, and sports venues) that may contribute to contact rates.  Also shown are percent change and rank in `r town`. Find specific block groups or points of interest in the search box. The table can be sorted by value for each column. 
 
 ```{r echo=FALSE}
 library(formattable)
