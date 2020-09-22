@@ -10,17 +10,13 @@ library(DT)
 library(sf)
 library(dplyr)
 
+source("util.r")
+
 #####################################
 # load data
 
 load("ct_data.Rsave")
 
-
-###################################
-# days of week
-
-saturdays = seq(mdy("2/1/2020"), today(), by="week")
-sundays = seq(mdy("2/2/2020"), today(), by="week")
 
 #######################
 
@@ -31,33 +27,8 @@ daymax = max(dat_merged_towns$date)
 ###################################
 # create the base map
 
-# todo: put this in util.r / get_basemap()
 
-basemap = leaflet() %>% 
-          addLayersControl(
-            position = "topright",
-            baseGroups = c("CartoDB.Positron", "Esri.WorldStreetMap", "CartoDB.Voyager", "Esri.WorldImagery"),
-            overlayGroups = c("Metric", "Points of Interest"),
-            options = layersControlOptions(collapsed = TRUE)) %>% 
-          hideGroup(c("Points of Interest")) %>%
-          addProviderTiles("CartoDB.Positron", group="CartoDB.Positron") %>% 
-          addProviderTiles("Esri.WorldImagery", group="Esri.WorldImagery") %>%
-          addProviderTiles("Esri.WorldStreetMap", group="Esri.WorldStreetMap") %>%
-          addProviderTiles("CartoDB.Voyager", group="CartoDB.Voyager") %>%
-          #setView(-72.694684, 41.538881, zoom=9) %>% # Middletown
-          setView(-73.011905, 41.289133, zoom=9) %>% # New Haven/Milford
-          addEasyButton(easyButton(
-            icon="fa-crosshairs", title="Locate Me",
-            onClick=JS("function(btn, map){ map.locate({setView: true}); }")))
-
-
-pal_town_contact = colorBin("Greens", domain=NULL, bins=c(seq(0,30,by=5),Inf)) 
-pal_cbg_contact = colorBin("Greens", domain=NULL, bins=c(seq(0,8,by=1),Inf)) 
-pal_town_home = colorBin("Blues", domain=NULL, bins=c(seq(0,30,by=5),Inf)) 
-pal_cbg_home = colorBin("Blues", domain=NULL, bins=c(seq(0,8,by=1),Inf)) 
-
-pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red", "yellow"), 
-                                     levels = c("Hospital", "House of Worship", "Sports Venue", "Mall", "University"))
+basemap = get_basemap()
 
 
 #############################
@@ -66,7 +37,6 @@ pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "re
 
 
 # town data from prior 2 weeks
-
 
 dat_by_town_lastweek_mean = aggregate(prob_sum_contact ~ town, data=dat_by_town_lastweek, mean)
 dat_by_town_lastweek2_mean = aggregate(prob_sum_contact ~ town, data=dat_by_town_lastweek2, mean)
@@ -157,14 +127,16 @@ ui <- bootstrapPage(
   fluidRow(
     column(12, 
     includeMarkdown("town_text.md"),
-    DT::dataTableOutput('town_table')
+    DT::dataTableOutput('town_table') #,
+    #downloadButton("downloadTownData", "Download town data")
     )))), 
   tabPanel("Block groups",
   fluidPage(
   fluidRow(
     column(12, 
     includeMarkdown("cbg_text.md"),
-    DT::dataTableOutput('cbg_table')
+    DT::dataTableOutput('cbg_table') #,
+    #downloadButton("downloadCBGData", "Download block group data")
     )))), 
   tabPanel("About",
   fluidPage(
@@ -181,19 +153,6 @@ ui <- bootstrapPage(
 ###########################
 
 server = function(input, output, session) {
-
-
-  #data_of_click <- reactiveValues(clickedShape=NULL)
-
- # observeEvent(input$mymap_shape_click,{
- #   data_of_click$clickedMarker <- input$mymap_shape_click
- # })
-
-   #id_clicked = "New Haven"
-
-   #observe({ 
-       #id_clicked <- input$mymap_shape_click$id
-   #})
 
 
   output$town_table <- DT::renderDataTable(dat_by_town_week_comparison, rownames=FALSE) 
@@ -365,24 +324,26 @@ server = function(input, output, session) {
     clearMarkers() %>%
     clearShapes() %>%
     clearControls() %>% # remove legend
-    addPolygons(data = reactive_db(), stroke = TRUE, weight=1, color = "#999", smoothFactor = 0.1, fillOpacity = 0.8, 
-                fillColor = ~pal(db_metric),
-                group = "Metric",
-                layerId = ~area_name,
-                label = sprintf("<strong>%s</strong><br/>%g", reactive_db()$area_name, db_metric) %>% lapply(htmltools::HTML),
-                labelOptions = labelOptions(
-                    style = list("font-weight" = "normal", padding = "3px 8px", "color" = "green"),
-                    textsize = "15px", direction = "auto"),
-                highlight = highlightOptions(stroke=TRUE, weight=6, bringToFront=FALSE, color = "#999")) %>%
-       addCircleMarkers(data=points_of_interest, lat = ~ lat, lng = ~ lon, 
-                 weight = 1, stroke=FALSE, radius = pointrad, fillOpacity = 0.3, 
-                 group = "Points of Interest",
-                 color = ~pal_points_of_interest(type),
-                 label = sprintf("<strong>%s: %s</strong><br/>%s %s", points_of_interest$type, points_of_interest$name, 
-                             points_of_interest$address, points_of_interest$city) %>% lapply(htmltools::HTML),
-                 labelOptions = labelOptions(
-                   style = list("font-weight" = "normal", padding = "3px 8px"),
-                   textsize = "15px", direction = "auto")) %>% 
+    add_map_polygons(db, db_metric, pal) %>%
+    #addPolygons(data = reactive_db(), stroke = TRUE, weight=1, color = "#999", smoothFactor = 0.1, fillOpacity = 0.8, 
+                #fillColor = ~pal(db_metric),
+                #group = "Metric",
+                #layerId = ~area_name,
+                #label = sprintf("<strong>%s</strong><br/>%g", reactive_db()$area_name, db_metric) %>% lapply(htmltools::HTML),
+                #labelOptions = labelOptions(
+                    #style = list("font-weight" = "normal", padding = "3px 8px", "color" = "green"),
+                    #textsize = "15px", direction = "auto"),
+                #highlight = highlightOptions(stroke=TRUE, weight=6, bringToFront=FALSE, color = "#999")) %>%
+     add_map_points_of_interest(db=points_of_interest,pal=pal_points_of_interest,pointrad=pointrad) %>% 
+       #addCircleMarkers(data=points_of_interest, lat = ~ lat, lng = ~ lon, 
+                 #weight = 1, stroke=FALSE, radius = pointrad, fillOpacity = 0.3, 
+                 #group = "Points of Interest",
+                 #color = ~pal_points_of_interest(type),
+                 #label = sprintf("<strong>%s: %s</strong><br/>%s %s", points_of_interest$type, points_of_interest$name, 
+                             #points_of_interest$address, points_of_interest$city) %>% lapply(htmltools::HTML),
+                 #labelOptions = labelOptions(
+                   #style = list("font-weight" = "normal", padding = "3px 8px"),
+                   #textsize = "15px", direction = "auto")) %>% 
        addLegend("bottomright", pal = pal, values = db_metric, title = metric_lab) 
                    
 
@@ -390,6 +351,16 @@ server = function(input, output, session) {
 
 
   })
+
+
+  #output$downloadTownData <- downloadHandler(
+    #filename = function() {
+      #"Town_contact_data.csv"
+    #},
+    #content = function(file) {
+      #write.csv(output$town_table
+  #)
+    #})
 
 }
 

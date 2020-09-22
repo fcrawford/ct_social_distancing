@@ -179,8 +179,14 @@ This map shows <font color=\"#00AA00\"><b>contact rates</b></font> in `r town` c
 pal_cbg_contact <- colorNumeric("Greens", domain=dat_merged_cbgs_historical$prob_sum_contact_lastweek) 
 
 
-pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red", "yellow"), 
-                                     levels = c("Hospital", "House of Worship", "Sports Venue", "Mall", "University"))
+#pal_points_of_interest = colorFactor(palette = c("blue", "orange", "purple", "red", "yellow"), 
+                                     #levels = c("Hospital", "House of Worship", "Sports Venue", "Mall", "University"))
+
+poi_types = unique(points_of_interest$type)
+
+pal_points_of_interest = colorFactor(palette = rainbow(length(poi_types)), #c("blue", "orange", "purple", "red", "yellow"), 
+                                     levels = poi_types)
+
 
 pointrad = 5
 
