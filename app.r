@@ -159,114 +159,11 @@ server = function(input, output, session) {
 
   output$cbg_table <- DT::renderDataTable(dat_by_cbg_week_comparison, rownames=FALSE) 
 
-  # abstract this out and put in util.r 
   output$contact_curve <- renderPlot({
-    contact_max = max(dat_by_state$prob_sum)
     par(mar=c(2.5,4,1,1)) 
     layout(matrix(c(1,2,3,4),nrow=2, byrow=TRUE), widths=c(2,1), heights=1)
-
-    # state, full range
-    plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
-         ylim=c(0,max(dat_by_state$prob_sum)*1.1), xlab="", ylab="Contacts", axes=FALSE, main="Connecticut total")
-    dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
-    axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
-    axis(2)
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
-    abline(v=input$plot_date)
-    text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
-    points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
-    text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
-
-    # last month
-    par(mar=c(2.5,2,1,1)) 
-    dat_by_state_lastmonth = filter(dat_by_state, date > max(dat_by_state$date)-30)
-    plot(dat_by_state_lastmonth$date, dat_by_state_lastmonth$prob_sum, type="l", col="green", lwd=3, 
-        xlim=c(max(dat_by_state$date)-30, max(dat_by_state$date)+3),
-         #ylim=c(0,max(dat_by_state_lastmonth$prob_sum)*1.1), 
-         xlab="", 
-         ylab="", #"Contacts", 
-         axes=FALSE, main="Connecticut total (last 30 days)")
-    dateseq_lastmonth = c(seq(min(dat_by_state_lastmonth$date), max(dat_by_state_lastmonth$date), by="week"), max(dat_by_state$date))
-    axis(1,at=dateseq_lastmonth, lab=format(dateseq_lastmonth, "%b %d"))
-    axis(2)
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
-    abline(v=input$plot_date)
-    text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
-    points(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], pch=16)
-    text(input$plot_date, dat_by_state$prob_sum[dat_by_state$date == input$plot_date], format(dat_by_state$prob_sum[dat_by_state$date == input$plot_date], digits=1), pos=4)
-
-    # area plot
-    if(input$metric_type == "home") {
-      if(input$area_level == "town") {
-        db = dat_merged_towns
-        db_metric = dat_merged_towns$prob_sum_home
-      } else {
-        db = dat_merged_cbgs
-        db_metric = dat_merged_cbgs$prob_sum_home
-      }
-    } else if(input$metric_type == "contact") {
-      if(input$area_level == "town") {
-        db = dat_merged_towns
-        db_metric = dat_merged_towns$prob_sum_contact
-      } else {
-        db = dat_merged_cbgs
-        db_metric = dat_merged_cbgs$prob_sum_contact
-      }
-    } else {
-      stop("invalid metric type")
-    }
-
-    id_click = input$mymap_shape_click$id
-    if(is.null(id_click) || !(id_click %in% db$area_name)) {
-      if(input$area_level == "town") {
-        id_click = "New Haven"
-      } else {
-        id_click = "New Haven-090091403002"
-      }
-    }
-
-    contact_max = max(db_metric[db$area_name ==  id_click])
-    par(mar=c(2.5,4,1,1)) 
-    plot(0, type="n", xlim=c(min(db$date)-1, max(db$date)+1),
-             ylim=c(0,max(db_metric[db$area_name ==  id_click]*1.1)), xlab="", 
-             ylab="Contacts", axes=FALSE, main=id_click)
-    dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
-    axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
-    axis(2)
-    lines(db$date[db$area_name ==  id_click], db_metric[db$area_name == id_click], col="black", lwd=2)
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
-    abline(v=input$plot_date)
-    text(input$plot_date, contact_max, format(input$plot_date, "%b %d"), pos=2) 
-    points(input$plot_date, db_metric[db$area_name == id_click & db$date == input$plot_date], pch=16)
-    text(input$plot_date, db_metric[db$area_name == id_click & db$date == input$plot_date], 
-          format(db_metric[db$area_name == id_click & db$date == input$plot_date], digits=1), pos=4)
-
-    # last month
-    par(mar=c(2.5,2,1,1)) 
-    db_lastmonth = filter(db, date > max(db$date)-30)
-    db_metric_lastmonth = db_metric[db$date > max(db$date)-30]
-    dateseq_lastmonth = c(seq(min(dat_by_state_lastmonth$date), max(dat_by_state_lastmonth$date), by="week"), max(dat_by_state$date))
-    plot(0, type="n", 
-             xlim=c(min(dateseq_lastmonth), max(dateseq_lastmonth)+3),
-             ylim=range(db_metric_lastmonth[db_lastmonth$area_name == id_click]),
-             xlab="", 
-             ylab="", #"Contacts", 
-             axes=FALSE, main=paste(id_click, "(last 30 days)"))
-    axis(1,at=dateseq_lastmonth, lab=format(dateseq_lastmonth, "%b %d"))
-    axis(2)
-    lines(db_lastmonth$date[db_lastmonth$area_name ==  id_click], db_metric_lastmonth[db_lastmonth$area_name == id_click], col="black", lwd=2)
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
-    abline(v=input$plot_date)
-    text(input$plot_date, max(db_metric_lastmonth), format(input$plot_date, "%b %d"), pos=2) 
-    if(input$plot_date > min(dateseq_lastmonth)) {
-      points(input$plot_date, db_metric_lastmonth[db_lastmonth$area_name == id_click & db_lastmonth$date == input$plot_date], pch=16)
-      text(input$plot_date, db_metric_lastmonth[db_lastmonth$area_name == id_click & db_lastmonth$date == input$plot_date], 
-            format(db_metric_lastmonth[db_lastmonth$area_name == id_click & db_lastmonth$date == input$plot_date], digits=1), pos=4)
-    }
-
-
-
-
+    make_state_contact_plot(input$plot_date)
+    make_area_contact_plot(input$plot_date, input$metric_type, input$area_level, area_id=input$mymap_shape_click$id)
   })
 
   reactive_db = reactive({
@@ -317,51 +214,15 @@ server = function(input, output, session) {
       stop("invalid metric type")
     }
 
-    pointrad = 5
-
-
     leafletProxy("mymap") %>% 
     clearMarkers() %>%
     clearShapes() %>%
-    clearControls() %>% # remove legend
+    clearControls() %>% 
     add_map_polygons(db, db_metric, pal) %>%
-    #addPolygons(data = reactive_db(), stroke = TRUE, weight=1, color = "#999", smoothFactor = 0.1, fillOpacity = 0.8, 
-                #fillColor = ~pal(db_metric),
-                #group = "Metric",
-                #layerId = ~area_name,
-                #label = sprintf("<strong>%s</strong><br/>%g", reactive_db()$area_name, db_metric) %>% lapply(htmltools::HTML),
-                #labelOptions = labelOptions(
-                    #style = list("font-weight" = "normal", padding = "3px 8px", "color" = "green"),
-                    #textsize = "15px", direction = "auto"),
-                #highlight = highlightOptions(stroke=TRUE, weight=6, bringToFront=FALSE, color = "#999")) %>%
-     add_map_points_of_interest(db=points_of_interest,pal=pal_points_of_interest,pointrad=pointrad) %>% 
-       #addCircleMarkers(data=points_of_interest, lat = ~ lat, lng = ~ lon, 
-                 #weight = 1, stroke=FALSE, radius = pointrad, fillOpacity = 0.3, 
-                 #group = "Points of Interest",
-                 #color = ~pal_points_of_interest(type),
-                 #label = sprintf("<strong>%s: %s</strong><br/>%s %s", points_of_interest$type, points_of_interest$name, 
-                             #points_of_interest$address, points_of_interest$city) %>% lapply(htmltools::HTML),
-                 #labelOptions = labelOptions(
-                   #style = list("font-weight" = "normal", padding = "3px 8px"),
-                   #textsize = "15px", direction = "auto")) %>% 
-       addLegend("bottomright", pal = pal, values = db_metric, title = metric_lab) 
-                   
-
-
-
+    add_map_points_of_interest(db=points_of_interest,pal=pal_points_of_interest,pointrad=pointrad) %>% 
+    addLegend("bottomright", pal = pal, values = db_metric, title = metric_lab) 
 
   })
-
-
-  #output$downloadTownData <- downloadHandler(
-    #filename = function() {
-      #"Town_contact_data.csv"
-    #},
-    #content = function(file) {
-      #write.csv(output$town_table
-  #)
-    #})
-
 }
 
 #########################

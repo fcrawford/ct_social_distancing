@@ -26,6 +26,9 @@ poi_types = unique(points_of_interest$type)
 pal_points_of_interest = colorFactor(palette = rainbow(length(poi_types)), #c("blue", "orange", "purple", "red", "yellow"), 
                                      levels = poi_types)
 
+# radius of POI points
+pointrad = 5
+
 ###################################
 # days of week
 
@@ -140,17 +143,17 @@ map_picture = function(plot_date, area_level, metric_type, maptitle, filename) {
       stop("invalid metric type")
     }
 
-    pointrad = 5
 
 
      map = get_basemap(maptitle=maptitle) %>%
-           add_map_polygons(db, db_metric, pal) %>%
-           add_map_points_of_interest(db=points_of_interest,pal=pal_points_of_interest,pointrad=pointrad)
+           add_map_polygons(db, db_metric, pal) #%>%
+           #add_map_points_of_interest(db=points_of_interest,pal=pal_points_of_interest,pointrad=pointrad)
 
   mapshot(map, file=filename)
 }
 
 ##################################
+# for weekly updates
 
 make_map_pictures = function(plot_date=NULL) {
 
@@ -172,6 +175,156 @@ make_map_pictures = function(plot_date=NULL) {
     }
   }
 }
+
+##################################
+# for publication
+
+make_picture_sequence = function() {
+
+  mydates = seq(mdy("2/2/2020"), today(), by="month")
+
+  for(i in 1:length(mydates)) {
+    dt = mydates[i]
+    fname = paste(format(dt, "%d%b%Y"), "_town_contact.png", sep="")
+    print(fname)
+    maptitle = paste("Contact at the town level on", format(dt, "%B %d, %Y"))
+    cat("############################\n")
+    cat("Writing", fname, "\n")
+    map_picture(dt, "town", "contact", maptitle=maptitle, filename=fname)
+  }
+  
+  make_state_contact_plot(plot_date=mydates, show_last_month=FALSE)
+  dev.print(device=pdf, file="state_contact_plot.pdf")
+}
+
+######################################
+# Make the state contact trace plot 
+
+make_state_contact_plot = function(plot_date=NULL, show_last_month=TRUE) {
+  contact_max = max(dat_by_state$prob_sum)
+
+  plot(dat_by_state$date, dat_by_state$prob_sum, type="l", col="green", lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
+       ylim=c(0,max(dat_by_state$prob_sum)*1.1), xlab="", ylab="Contacts", axes=FALSE, main="Connecticut total")
+  dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
+  axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
+  axis(2)
+  for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+  if(!is.null(plot_date) || length(plot_date)>0) {
+    abline(v=plot_date)
+    text(plot_date, contact_max, format(plot_date, "%b %d"), pos=2) 
+    for(pd in plot_date) {
+      points(pd, dat_by_state$prob_sum[dat_by_state$date == pd], pch=16)
+      text(pd, dat_by_state$prob_sum[dat_by_state$date == pd], format(dat_by_state$prob_sum[dat_by_state$date == pd], digits=1), pos=4)
+    }
+  }
+
+  if(show_last_month) {
+    # last month
+    par(mar=c(2.5,2,1,1)) 
+    dat_by_state_lastmonth = filter(dat_by_state, date > max(dat_by_state$date)-30)
+    plot(dat_by_state_lastmonth$date, dat_by_state_lastmonth$prob_sum, type="l", col="green", lwd=3, 
+         xlim=c(max(dat_by_state$date)-30, max(dat_by_state$date)+3),
+         #ylim=c(0,max(dat_by_state_lastmonth$prob_sum)*1.1), 
+         xlab="", 
+         ylab="", #"Contacts", 
+         axes=FALSE, main="Connecticut total (last 30 days)")
+    dateseq_lastmonth = c(seq(min(dat_by_state_lastmonth$date), max(dat_by_state_lastmonth$date), by="week"), max(dat_by_state$date))
+    axis(1,at=dateseq_lastmonth, lab=format(dateseq_lastmonth, "%b %d"))
+    axis(2)
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    if(!is.null(plot_date)) {
+      abline(v=plot_date)
+      text(plot_date, contact_max, format(plot_date, "%b %d"), pos=2) 
+      points(plot_date, dat_by_state$prob_sum[dat_by_state$date == plot_date], pch=16)
+      text(plot_date, dat_by_state$prob_sum[dat_by_state$date == plot_date], format(dat_by_state$prob_sum[dat_by_state$date == plot_date], digits=1), pos=4)
+    }
+  }
+}
+
+###########################################
+# make area contact trace plot
+
+make_area_contact_plot = function(plot_date=NULL, metric_type, area_level, area_id=NULL) {
+
+  if(metric_type == "home") {
+      if(area_level == "town") {
+        db = dat_merged_towns
+        db_metric = dat_merged_towns$prob_sum_home
+      } else {
+        db = dat_merged_cbgs
+        db_metric = dat_merged_cbgs$prob_sum_home
+      }
+    } else if(metric_type == "contact") {
+      if(area_level == "town") {
+        db = dat_merged_towns
+        db_metric = dat_merged_towns$prob_sum_contact
+      } else {
+        db = dat_merged_cbgs
+        db_metric = dat_merged_cbgs$prob_sum_contact
+      }
+    } else {
+      stop("invalid metric type")
+    }
+
+    if(is.null(area_id) || !(area_id %in% db$area_name)) {
+      if(area_level == "town") {
+        area_id = "New Haven"
+      } else {
+        area_id = "New Haven-090091403002"
+      }
+    }
+
+
+    dat_by_state_lastmonth = filter(dat_by_state, date > max(dat_by_state$date)-30)
+
+    contact_max = max(db_metric[db$area_name ==  area_id])
+    par(mar=c(2.5,4,1,1)) 
+    plot(0, type="n", xlim=c(min(db$date)-1, max(db$date)+1),
+             ylim=c(0,max(db_metric[db$area_name ==  area_id]*1.1)), xlab="", 
+             ylab="Contacts", axes=FALSE, main=area_id)
+    dateseq = c(seq(min(dat_by_state$date), max(dat_by_state$date), by="month"), max(dat_by_state$date))
+    axis(1,at=dateseq, lab=format(dateseq, "%b %d"))
+    axis(2)
+    lines(db$date[db$area_name ==  area_id], db_metric[db$area_name == area_id], col="black", lwd=2)
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    if(!is.null(plot_date)) {
+      abline(v=plot_date)
+      text(plot_date, contact_max, format(plot_date, "%b %d"), pos=2) 
+      points(plot_date, db_metric[db$area_name == area_id & db$date == plot_date], pch=16)
+      text(plot_date, db_metric[db$area_name == area_id & db$date == plot_date], 
+          format(db_metric[db$area_name == area_id & db$date == plot_date], digits=1), pos=4)
+    }
+
+    # last month
+    par(mar=c(2.5,2,1,1)) 
+    db_lastmonth = filter(db, date > max(db$date)-30)
+    db_metric_lastmonth = db_metric[db$date > max(db$date)-30]
+    dateseq_lastmonth = c(seq(min(dat_by_state_lastmonth$date), max(dat_by_state_lastmonth$date), by="week"), max(dat_by_state$date))
+    plot(0, type="n", 
+             xlim=c(min(dateseq_lastmonth), max(dateseq_lastmonth)+3),
+             ylim=range(db_metric_lastmonth[db_lastmonth$area_name == area_id]),
+             xlab="", 
+             ylab="", #"Contacts", 
+             axes=FALSE, main=paste(area_id, "(last 30 days)"))
+    axis(1,at=dateseq_lastmonth, lab=format(dateseq_lastmonth, "%b %d"))
+    axis(2)
+    lines(db_lastmonth$date[db_lastmonth$area_name ==  area_id], db_metric_lastmonth[db_lastmonth$area_name == area_id], col="black", lwd=2)
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    if(!is.null(plot_date)) {
+      abline(v=plot_date)
+      text(plot_date, max(db_metric_lastmonth), format(plot_date, "%b %d"), pos=2) 
+      if(plot_date > min(dateseq_lastmonth)) {
+        points(plot_date, db_metric_lastmonth[db_lastmonth$area_name == area_id & db_lastmonth$date == plot_date], pch=16)
+        text(plot_date, db_metric_lastmonth[db_lastmonth$area_name == area_id & db_lastmonth$date == plot_date], 
+              format(db_metric_lastmonth[db_lastmonth$area_name == area_id & db_lastmonth$date == plot_date], digits=1), pos=4)
+      }
+    }
+
+}
+
+
+
+
 
 
 
