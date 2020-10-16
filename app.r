@@ -56,9 +56,9 @@ dat_by_town_week_comparison = dat_by_town_week_comparison[ord,]
 
 names(dat_by_town_week_comparison) <- c("Town", "Contact this week", "Rank this week", "Contact last week", "Rank last week")
 
+
 ###############################
 # cbg data from prior 2 weeks 
-
 
 dat_by_cbg_lastweek_mean = aggregate(prob_sum_contact ~ geoid, data=dat_by_cbg_lastweek, mean)
 dat_by_cbg_lastweek2_mean = aggregate(prob_sum_contact ~ geoid, data=dat_by_cbg_lastweek2, mean)
@@ -110,6 +110,8 @@ ui <- bootstrapPage(
                #h4("Controls"),
                radioButtons("area_level", "Spatial resolution", c("Town" = "town", "Census block group" = "cbg")),
                radioButtons("metric_type", "Metric", c("Contact locations" = "contact", "Home locations" = "home")),
+               checkboxInput("metric_normalize", label = "Normalize to February", value = FALSE),
+               checkboxInput("show_important_dates", label = "Show important dates", value = FALSE),
                sliderInput("plot_date",
                  label = h5("Select Date"),
                  min = daymin,
@@ -162,8 +164,8 @@ server = function(input, output, session) {
   output$contact_curve <- renderPlot({
     par(mar=c(2.5,4,1,1)) 
     layout(matrix(c(1,2,3,4),nrow=2, byrow=TRUE), widths=c(2,1), heights=1)
-    make_state_contact_plot(input$plot_date)
-    make_area_contact_plot(input$plot_date, input$metric_type, input$area_level, area_id=input$mymap_shape_click$id)
+    make_state_contact_plot(input$plot_date, metric_normalize=input$metric_normalize, show_important_dates=input$show_important_dates)
+    make_area_contact_plot(input$plot_date, input$metric_type, input$metric_normalize, input$area_level, area_id=input$mymap_shape_click$id)
   })
 
   reactive_db = reactive({
@@ -189,25 +191,54 @@ server = function(input, output, session) {
   observeEvent(
   {input$plot_date   # this is a hack to get observeEvent to notice if either plot_date or area_level have changed. 
    input$area_level
-   input$metric_type}, {
+   input$metric_type
+   input$metric_normalize
+   input$show_important_dates}, {
 
     db = reactive_db()
 
     if(input$metric_type == "home") {
-      db_metric = db$prob_sum_home
+      labcol = "blue"
+      if(input$metric_normalize) {
+        db_metric = db$prob_sum_home_norm
+      } else {
+        db_metric = db$prob_sum_home
+      }
       metric_lab = "Home Metric"
       if(input$area_level == "town") {
-        pal = pal_town_home
+        if(input$metric_normalize) {
+          pal = pal_town_home_norm
+        } else {
+          pal = pal_town_home
+        }
       } else {
-        pal = pal_cbg_home
+        if(input$metric_normalize) {
+          pal = pal_cbg_home_norm
+        } else {
+          pal = pal_cbg_home
+        }
       }
     } else if(input$metric_type == "contact") {
-      db_metric = db$prob_sum_contact
+      labcol = "green"
+      if(input$metric_normalize) {
+        db_metric = db$prob_sum_contact_norm
+      } else {
+        db_metric = db$prob_sum_contact
+      }
       metric_lab = "Contact Metric"
       if(input$area_level == "town") {
-        pal = pal_town_contact
+        if(input$metric_normalize) {
+          pal = pal_town_contact_norm
+        } else {
+          pal = pal_town_contact
+        }
       } else {
-        pal = pal_cbg_contact
+        if(input$metric_normalize) {
+          pal = pal_cbg_contact_norm
+        } else {
+          pal = pal_cbg_contact
+        }
+
       }
 
     } else {
@@ -218,7 +249,7 @@ server = function(input, output, session) {
     clearMarkers() %>%
     clearShapes() %>%
     clearControls() %>% 
-    add_map_polygons(db, db_metric, pal) %>%
+    add_map_polygons(db, db_metric, pal, labcol) %>%
     add_map_points_of_interest(db=points_of_interest,pal=pal_points_of_interest,pointrad=pointrad) %>% 
     addLegend("bottomright", pal = pal, values = db_metric, title = metric_lab) 
 
