@@ -241,13 +241,15 @@ make_picture_sequence = function() {
 # Make the state contact trace plot 
 
 make_state_contact_plot = function(plot_date=NULL, metric_normalize=FALSE, show_last_month=TRUE, col="green", show_important_dates=FALSE) {
-  contact_max = max(dat_by_state$prob_sum)
+
 
   if(metric_normalize) {
     db_metric = dat_by_state$prob_sum_norm
   } else {
     db_metric = dat_by_state$prob_sum
   }
+
+  contact_max = max(db_metric)
 
   par(mar=c(2.5,4,1,1)) 
   plot(dat_by_state$date, db_metric, type="l", col=col, lwd=3, xlim=c(min(dat_by_state$date)-1, max(dat_by_state$date)+1),
@@ -258,7 +260,7 @@ make_state_contact_plot = function(plot_date=NULL, metric_normalize=FALSE, show_
   if(metric_normalize) {
     abline(h=1, lty="dashed", col="gray")
   }
-  for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+  for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 1e4, col=rgb(0,0,0,alpha=0.1), border=NA) }
   if(!is.null(plot_date) || length(plot_date)>0) {
     abline(v=plot_date)
     text(plot_date, contact_max, format(plot_date, "%b %d"), pos=2) 
@@ -271,25 +273,26 @@ make_state_contact_plot = function(plot_date=NULL, metric_normalize=FALSE, show_
   if(show_important_dates) {
 
     #points(stay_at_home_date, dat_by_state$prob_sum[dat_by_state$date == stay_at_home_date], pch=16, col="red", cex=1)
-    arrows(stay_at_home_date, contact_max, 
-           stay_at_home_date, db_metric[dat_by_state$date == stay_at_home_date]+100,
-           length=0.2, lwd=2)
-    text(stay_at_home_date, contact_max, "Stay-at-home order", pos=3)
+    propmax = 0.75
+    arrows(stay_at_home_date, propmax*contact_max, 
+           stay_at_home_date, db_metric[dat_by_state$date == stay_at_home_date],
+           length=0.15, lwd=2)
+    text(stay_at_home_date, propmax*contact_max, "Stay-at-home order", pos=3)
 
-    arrows(phase_1_date, contact_max, 
-           phase_1_date, db_metric[dat_by_state$date == phase_1_date]+100,
-           length=0.2, lwd=2)
-    text(phase_1_date, contact_max, "Phase 1", pos=3)
+    arrows(phase_1_date, propmax*contact_max, 
+           phase_1_date, db_metric[dat_by_state$date == phase_1_date],
+           length=0.15, lwd=2)
+    text(phase_1_date, propmax*contact_max, "Phase 1", pos=3)
 
-    arrows(phase_2_date, contact_max, 
-           phase_2_date, db_metric[dat_by_state$date == phase_2_date]+100,
-           length=0.2, lwd=2)
-    text(phase_2_date, contact_max, "Phase 2", pos=3)
+    arrows(phase_2_date, propmax*contact_max, 
+           phase_2_date, db_metric[dat_by_state$date == phase_2_date],
+           length=0.15, lwd=2)
+    text(phase_2_date, propmax*contact_max, "Phase 2", pos=3)
 
-    arrows(phase_3_date, contact_max, 
-           phase_3_date, db_metric[dat_by_state$date == phase_2_date]+100,
-           length=0.2, lwd=2)
-    text(phase_3_date, contact_max, "Phase 3", pos=3)
+    arrows(phase_3_date, propmax*contact_max, 
+           phase_3_date, db_metric[dat_by_state$date == phase_2_date],
+           length=0.15, lwd=2)
+    text(phase_3_date, propmax*contact_max, "Phase 3", pos=3)
 
 
   }
@@ -316,7 +319,7 @@ make_state_contact_plot = function(plot_date=NULL, metric_normalize=FALSE, show_
     if(metric_normalize) {
       abline(h=1, lty="dashed", col="gray")
     }
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 1e4, col=rgb(0,0,0,alpha=0.1), border=NA) }
     if(!is.null(plot_date)) {
       abline(v=plot_date)
       text(plot_date, contact_max, format(plot_date, "%b %d"), pos=2) 
@@ -391,7 +394,8 @@ make_area_contact_plot = function(plot_date=NULL, metric_type, metric_normalize=
       abline(h=1, lty="dashed", col="gray")
     }
 
-    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 5e5, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    for(i in 1:length(saturdays)) { rect(saturdays[i]-1/2, 0, sundays[i]+1/2, 1e4, col=rgb(0,0,0,alpha=0.1), border=NA) }
+    
     if(!is.null(plot_date)) {
       abline(v=plot_date)
       text(plot_date, contact_max, format(plot_date, "%b %d"), pos=2) 
