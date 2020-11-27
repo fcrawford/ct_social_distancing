@@ -49,6 +49,12 @@ stay_at_home_date = mdy("3/23/2020")
 phase_1_date = mdy("5/20/2020")
 phase_2_date = mdy("6/17/2020")
 phase_3_date = mdy("10/8/2020")
+phase_2.1_date = mdy("11/6/2020")
+
+####################################
+
+mall_indices = grep("Mall", ct_cbgs$poi)
+mall_geoids = ct_cbgs$GEOID[mall_indices]
 
 
 #############################
@@ -290,10 +296,14 @@ make_state_contact_plot = function(plot_date=NULL, metric_normalize=FALSE, show_
     text(phase_2_date, propmax*contact_max, "Phase 2", pos=3)
 
     arrows(phase_3_date, propmax*contact_max, 
-           phase_3_date, db_metric[dat_by_state$date == phase_2_date],
+           phase_3_date, db_metric[dat_by_state$date == phase_3_date],
            length=0.15, lwd=2)
     text(phase_3_date, propmax*contact_max, "Phase 3", pos=3)
 
+    arrows(phase_2.1_date, propmax*contact_max, 
+           phase_2.1_date, db_metric[dat_by_state$date == phase_3_date], # change to phase_2.1_date! 
+           length=0.15, lwd=2)
+    text(phase_2.1_date, propmax*contact_max, "Phase 2.1", pos=3)
 
   }
 
